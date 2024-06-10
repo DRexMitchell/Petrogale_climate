@@ -1,0 +1,195 @@
+---
+title: "Petrogale_climate"
+author: "D. Rex Mitchell"
+date: "2024-06-09"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Load packages
+```{r}
+library(geomorph)
+library(landvR)
+library(vegan)
+library(phytools)
+library(usdm)
+```
+
+Import data
+```{r}
+load("Petrogale_climate_tests.rda")
+```
+
+Perform Procrustes superimpositions and extract centroid size
+```{r}
+ind <- dimnames(shapedata)[[3]]
+pet_sym <- bilat.symmetry(shapedata, ind=ind, land.pairs = sym, object.sym=T, curves=slide)
+gpa <- gpagen(shapedata)
+size <- gpa$Csize
+```
+
+An initial simple test of Bergmann's rule, regression cranial size and latitude
+```{r}
+bergmann.model <- procD.lm(log(size)~lat, iter=999); summary(bergmann.model)
+```
+
+Prepare data of VARPART analysis
+```{r}
+geodata <- cbind(lon, lat)
+distances <- dist(geodata) # generates pairwise distances matrix
+spatial.data<-pcnm(distances) # Principal Coordinate Neighbour Matrices conversion
+
+length(spatial.data$values)
+sum(spatial.data$values[1:8]/sum(spatial.data$values[1:152])) # Identify how many values equate to ~95% and isolate these
+spat <- spatial.data$vectors[,1:8]
+
+vif <- vifstep(climdata,th=3); vif 
+# 5 variables remain after removing correlated climate variables
+```
+
+Do VARPART analysis
+```{r}
+sym.mat <- two.d.array(pet_sym$symm.shape)
+mod<-varpart(sym.mat,~log(size),~spat,~climdata[,c(2:3,8:9,18)]); mod
+showvarparts(3)
+plot(mod,digits = 2, Xnames = c('cranial size','geography', 'climate'), bg = c('red','orange', 'blue'))
+```
+
+Check R-squared values not printed with the model
+```{r}
+full_model <- rda(sym.mat ~ log(size) + spat + climdata[,c(2:3,8:9,18)])
+anova(full_model)
+RsquareAdj(full_model)
+
+full_size_fraction <- rda(sym.mat ~ log(gpa$Csize))
+anova(full_size_fraction) 
+RsquareAdj(full_size_fraction)
+
+full_geo_fraction <- rda(sym.mat ~ spat)
+anova(full_geo_fraction) 
+RsquareAdj(full_geo_fraction)
+
+full_clim_fraction <- rda(sym.mat ~ climdata[,c(2:3,8:9,18)])
+anova(full_clim_fraction) 
+RsquareAdj(full_clim_fraction)
+
+pure_size_fraction <- rda(sym.mat ~ log(size) + Condition(climdata[,c(2:3,8:9,18)]) + Condition(spat))
+anova(pure_size_fraction)
+RsquareAdj(pure_size_fraction)
+
+pure_geo_fraction <- rda(sym.mat~ spat + Condition(log(size)) + Condition(climdata[,c(2:3,8:9,18)]))
+anova(pure_geo_fraction)
+RsquareAdj(pure_geo_fraction)
+
+pure_clim_fraction <- rda(sym.mat ~ climdata[,c(2:3,8:9,18)] + Condition(log(size)) + Condition(spat))
+anova(pure_clim_fraction)
+RsquareAdj(pure_clim_fraction)
+```
+
+Latitude and climate models, with predicted shapes
+```{r}
+latitude_shape <- procD.lm(pet_sym$symm.shape~lat,iter=999); summary(latitude_shape)
+latitude_plot <- plot(latitude_shape, type = "regression", predictor = lat, reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species) 
+
+plot(latitude_plot$RegScore~lat, pch=icons, cex=exp(gpa$Csize/100)/40, bg = species, xlab = "Latitude", ylab = "Shape Score")
+
+preds <- shape.predictor(latitude_shape$GM$fitted, x = latitude_plot$PredLine,
+                         predmin = max(latitude_plot$PredLine), 
+                         predmax = min(latitude_plot$PredLine))
+differences <- coordinates.difference(coordinates = preds$predmax,
+                                      reference = preds$predmin, type = "spherical")
+procrustes.var.plot(preds$predmin, preds$predmax, col = heat.colors, col.val = differences[[1]][1:150], magnitude = 1, pt.size = 1)
+
+MDR <- procD.lm(pet_sym$symm.shape~climdata[,2], iter=999); summary(MDR)
+MDR_plot <- plot(MDR, type = "regression", predictor = climdata[,2], reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species) 
+
+plot(MDR_plot$RegScore~climdata[,2], pch=icons, cex=exp(gpa$Csize/100)/40, bg = species, xlab = "Mean Diurnal Range", ylab = "Shape Score")
+
+MDR_size <- procD.lm(MDR_plot$RegScore~log(size), iter=999); summary(MDR_size)
+
+preds <- shape.predictor(MDR$GM$fitted, x = MDR_plot$PredLine, 
+                         predmin = min(MDR_plot$PredLine), 
+                         predmax = max(MDR_plot$PredLine))
+differences <- coordinates.difference(coordinates = preds$predmax,
+                                      reference = preds$predmin, type = "spherical")
+procrustes.var.plot(preds$predmin, preds$predmax, col = heat.colors, col.val = differences[[1]][1:150], magnitude = 1, pt.size = 1)
+
+ISO <- procD.lm(pet_sym$symm.shape~climdata[,3], iter=999); summary(ISO)
+ISO_plot <- plot(ISO, type = "regression", predictor = climdata[,3], reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species) 
+
+plot(ISO_plot$RegScore~climdata[,3], pch=icons, cex=exp(gpa$Csize/100)/40, bg = species, xlab = "Isothermality", ylab = "Shape Score")
+
+ISO_size <- procD.lm(ISO_plot$RegScore~log(size), iter=999); summary(ISO_size)
+preds <- shape.predictor(ISO$GM$fitted, x = ISO_plot$PredLine, 
+                         predmin = min(ISO_plot$PredLine), 
+                         predmax = max(ISO_plot$PredLine))
+differences <- coordinates.difference(coordinates = preds$predmax,
+                                      reference = preds$predmin, type = "spherical")
+procrustes.var.plot(preds$predmin, preds$predmax, col = heat.colors, col.val = differences[[1]][1:150], magnitude = 1, pt.size = 1)
+
+TWQ <- procD.lm(pet_sym$symm.shape~climdata[,8], iter=999); summary(TWQ)
+TWQ_plot <- plot(TWQ, type = "regression", predictor = climdata[,8], reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species) 
+
+plot(TWQ_plot$RegScore~climdata[,8], pch=icons, cex=exp(gpa$Csize/100)/40, bg = species, xlab = "Temperature of Wettest Quarter", ylab = "Shape Score")
+
+TWQ_size <- procD.lm(TWQ_plot$RegScore~log(size), iter=999); summary(TWQ_size)
+preds <- shape.predictor(TWQ$GM$fitted, x = TWQ_plot$PredLine, 
+                         predmin = min(TWQ_plot$PredLine), 
+                         predmax = max(TWQ_plot$PredLine))
+differences <- coordinates.difference(coordinates = preds$predmax,
+                                      reference = preds$predmin, type = "spherical")
+procrustes.var.plot(preds$predmin, preds$predmax, col = heat.colors, col.val = differences[[1]][1:150], magnitude = 1, pt.size = 1)
+
+TDQ <- procD.lm(pet_sym$symm.shape~climdata[,9], iter=999); summary(TDQ)
+TDQ_plot <- plot(TDQ, type = "regression", predictor = climdata[,9], reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species)
+
+plot(TDQ_plot$RegScore~climdata[,9], pch=icons, cex=exp(gpa$Csize/100)/40, bg = species, xlab = "Temperature of Driest Quarter", ylab = "Shape Score")
+
+TDQ_size <- procD.lm(TDQ_plot$RegScore~log(size), iter=999); summary(TDQ_size)
+preds <- shape.predictor(TDQ$GM$fitted, x = TDQ_plot$PredLine, 
+                         predmin = min(TDQ_plot$PredLine), 
+                         predmax = max(TDQ_plot$PredLine))
+differences <- coordinates.difference(coordinates = preds$predmax,
+                                      reference = preds$predmin, type = "spherical")
+procrustes.var.plot(preds$predmin, preds$predmax, col = heat.colors, col.val = differences[[1]][1:150], magnitude = 1, pt.size = 1)
+
+PWQ <- procD.lm(pet_sym$symm.shape~climdata[,18], iter=999); summary(PWQ)
+PWQ_plot <- plot(PWQ, type = "regression", predictor = climdata[,18], reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species)
+
+plot(PWQ_plot$RegScore~climdata[,18], pch=icons, cex=exp(gpa$Csize/100)/40, bg = species, xlab = "Precipitation of Warmest Quarter", ylab = "Shape Score")
+
+PWQ_size <- procD.lm(PWQ_plot$RegScore~log(size), iter=999); summary(PWQ_size)
+preds <- shape.predictor(PWQ$GM$fitted, x = PWQ_plot$PredLine, 
+                         predmin = min(PWQ_plot$PredLine), 
+                         predmax = max(PWQ_plot$PredLine))
+differences <- coordinates.difference(coordinates = preds$predmax,
+                                      reference = preds$predmin, type = "spherical")
+procrustes.var.plot(preds$predmin, preds$predmax, col = heat.colors, col.val = differences[[1]][1:150], magnitude = 1, pt.size = 1)
+```
+
+Phylogenetic tests compared with OLS MANOVA models
+```{r}
+OLS_allom <- procD.lm(pet_sym$symm.shape ~ log(size), iter=999); summary(OLS_allom)
+
+PGLS_allom <- procD.pgls(meanshapes_ord ~ log(size_ord), tree, iter=999); summary(PGLS_allom)
+
+OLS_clim <- procD.lm(pet_sym$symm.shape ~ climdata[,18], iter=999); summary(OLS_clim)
+
+PGLS_clim <- procD.pgls(meanshapes_ord ~ clim_ord, tree, iter=999); summary(PGLS_clim)
+
+PGLS_sizeclim <- procD.pgls(log(size_ord) ~ clim_ord, tree, iter=999); summary(PGLS_sizeclim)
+
+# Test for phylogenetic signal of size and BIO18
+physignal(log(size_ord), tree, iter=999)
+physignal(clim_ord, tree, iter=999)
+```
+
+Phylogenetic trees coloured by size and BIO18.
+```{r}
+plot(tree)
+axisPhylo()
+
+phyplot_size <- contMap(tree, size_ord)
+phyplot_clim <- contMap(tree, clim_ord)
+```
