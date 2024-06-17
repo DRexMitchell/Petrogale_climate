@@ -168,6 +168,33 @@ differences <- coordinates.difference(coordinates = preds$predmax,
 procrustes.var.plot(preds$predmin, preds$predmax, col = heat.colors, col.val = differences[[1]][1:150], magnitude = 1, pt.size = 1)
 ```
 
+Individual tests of shape relative to separate climate variables
+```{r}
+
+lms <- list()
+
+for (i in 1:ncol(climdata)){
+  
+  lms [[i]] <- summary(procD.lm( pet_sym$symm.shape ~ log(size)+climdata[,i], iter=999))
+  
+}
+
+#make table that has as many rows as variables and columns as numbers of summary stats collums
+individual_summary_table <- matrix (nrow = ncol(climdata), ncol = ncol(lms[[1]]$table))
+rownames(individual_summary_table) <- colnames(climdata)
+colnames(individual_summary_table) <- colnames(lms[[1]]$table)
+
+#Row 1 is size, row 2 is climate after size.  Or we can have a line for size and a line for climate.
+for (i in 1:ncol(climdata)) {
+  
+  individual_summary_table[i,] <- as.matrix(lms[[i]]$table)[1,]
+  
+}
+
+
+
+```
+
 Phylogenetic tests compared with OLS MANOVA models
 ```{r}
 OLS_allom <- procD.lm(pet_sym$symm.shape ~ log(size), iter=999); summary(OLS_allom)
