@@ -175,6 +175,8 @@ lms <- list()
 predplot <- list()
 lms_size <- list()
 
+par(mfrow=c(10,2))
+
 for (i in 1:ncol(climdata)){
   #make lm of shape vs climate data
   temp_lm <- procD.lm( pet_sym$symm.shape ~ climdata[,i], iter=999)
@@ -218,6 +220,12 @@ size_summary_table [,2:6] <- round (size_summary_table [,2:6], 2)
 Full_table <- cbind (shape_summary_table, size_summary_table)
 
 write.csv (Full_table, file="Individual_climate_variables.csv")
+
+
+
+
+
+
 
 ```
 
