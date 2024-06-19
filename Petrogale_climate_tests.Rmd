@@ -172,26 +172,52 @@ Individual tests of shape relative to separate climate variables
 ```{r}
 
 lms <- list()
+predplot <- list()
+lms_size <- list()
 
 for (i in 1:ncol(climdata)){
-  
-  lms [[i]] <- summary(procD.lm( pet_sym$symm.shape ~ log(size)+climdata[,i], iter=999))
+  #make lm of shape vs climate data
+  temp_lm <- procD.lm( pet_sym$symm.shape ~ climdata[,i], iter=999)
+  #store the summary for tabulating later
+  lms[[i]]<- summary(temp_lm)
+  #Create plots for plotting and stats of regcores below
+  predplot[[i]] <- plot(temp_lm, type = "regression", predictor = climdata[,i], reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species)
+  #regscore vs csize
+  lms_size[[i]] <- summary(procD.lm(predplot[[i]]$RegScore~log(size), iter=999))
   
 }
 
-#make table that has as many rows as variables and columns as numbers of summary stats collums
-individual_summary_table <- matrix (nrow = ncol(climdata), ncol = ncol(lms[[1]]$table))
-rownames(individual_summary_table) <- colnames(climdata)
-colnames(individual_summary_table) <- colnames(lms[[1]]$table)
+#make table that has as many rows as variables and columns as numbers of summary stats columns
+shape_summary_table <- matrix (nrow = ncol(climdata), ncol = ncol(lms[[1]]$table))
+rownames(shape_summary_table) <- colnames(climdata)
+colnames(shape_summary_table) <- colnames(lms[[1]]$table)
 
-#Row 1 is size, row 2 is climate after size.  Or we can have a line for size and a line for climate.
+#1st row is association of shape with climate
 for (i in 1:ncol(climdata)) {
   
-  individual_summary_table[i,] <- as.matrix(lms[[i]]$table)[1,]
+  shape_summary_table[i,] <- as.matrix(lms[[i]]$table)[1,]
   
 }
 
+shape_summary_table [,2:6] <- round (shape_summary_table [,2:6], 2)
 
+#make table for SIZE that has as many rows as variables and columns as numbers of summary stats columns
+size_summary_table <- matrix (nrow = ncol(climdata), ncol = ncol(lms_size[[1]]$table))
+rownames(size_summary_table) <- colnames(climdata)
+colnames(size_summary_table) <- colnames(lms_size[[1]]$table)
+
+#1st row is association of shape with climate
+for (i in 1:ncol(climdata)) {
+  
+  size_summary_table[i,] <- as.matrix(lms_size[[i]]$table)[1,]
+  
+}
+
+size_summary_table [,2:6] <- round (size_summary_table [,2:6], 2)
+
+Full_table <- cbind (shape_summary_table, size_summary_table)
+
+write.csv (Full_table, file="Individual_climate_variables.csv")
 
 ```
 
