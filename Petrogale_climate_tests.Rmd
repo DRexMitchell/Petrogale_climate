@@ -87,7 +87,7 @@ anova(pure_clim_fraction)
 RsquareAdj(pure_clim_fraction)
 ```
 
-Latitude and climate models, with predicted shapes
+Latitude and climate models with predicted shapes for variables used in the VARPART analysis
 ```{r}
 latitude_shape <- procD.lm(pet_sym$symm.shape~lat,iter=999); summary(latitude_shape)
 latitude_plot <- plot(latitude_shape, type = "regression", predictor = lat, reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species) 
@@ -170,12 +170,10 @@ procrustes.var.plot(preds$predmin, preds$predmax, col = heat.colors, col.val = d
 
 Individual tests of shape relative to separate climate variables
 ```{r}
-
 lms <- list()
 predplot <- list()
 lms_size <- list()
-
-par(mfrow=c(10,2))
+par(mfrow=c(4,5)) # change dimensions for desired plot presentation
 
 for (i in 1:ncol(climdata)){
   #make lm of shape vs climate data
@@ -186,7 +184,6 @@ for (i in 1:ncol(climdata)){
   predplot[[i]] <- plot(temp_lm, type = "regression", predictor = climdata[,i], reg.type = "RegScore", pch=icons, cex=gpa$Csize/200, bg = species)
   #regscore vs csize
   lms_size[[i]] <- summary(procD.lm(predplot[[i]]$RegScore~log(size), iter=999))
-  
 }
 
 #make table that has as many rows as variables and columns as numbers of summary stats columns
@@ -198,9 +195,7 @@ colnames(shape_summary_table) <- colnames(lms[[1]]$table)
 for (i in 1:ncol(climdata)) {
   
   shape_summary_table[i,] <- as.matrix(lms[[i]]$table)[1,]
-  
 }
-
 shape_summary_table [,2:6] <- round (shape_summary_table [,2:6], 2)
 
 #make table for SIZE that has as many rows as variables and columns as numbers of summary stats columns
@@ -210,22 +205,13 @@ colnames(size_summary_table) <- colnames(lms_size[[1]]$table)
 
 #1st row is association of shape with climate
 for (i in 1:ncol(climdata)) {
-  
   size_summary_table[i,] <- as.matrix(lms_size[[i]]$table)[1,]
-  
 }
-
 size_summary_table [,2:6] <- round (size_summary_table [,2:6], 2)
 
+
 Full_table <- cbind (shape_summary_table, size_summary_table)
-
 write.csv (Full_table, file="Individual_climate_variables.csv")
-
-
-
-
-
-
 
 ```
 
